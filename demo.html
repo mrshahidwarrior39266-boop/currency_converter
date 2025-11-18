@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Currency Calculator</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Flag Icon CSS Library -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css"/> 
+    <style>
+        /* Custom CSS to ensure flag visibility and smooth transitions */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s;
+        }
+        .fi {
+            /* Ensures flags have a defined size */
+            height: 1.25rem; /* h-5 */
+            width: 1.66rem; /* approximately w-7 ratio */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+            flex-shrink: 0;
+            margin-top: 0.25rem; 
+        }
+        
+        /* --- General Animations --- */
+        .slide-in {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        .hidden-initial {
+            opacity: 0;
+            display: none;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0.8; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Pulsing Shadow for Container */
+        .pulse-shadow {
+            animation: pulseShadow 3s infinite alternate ease-in-out;
+            z-index: 10; 
+        }
+        @keyframes pulseShadow {
+            0% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+            100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
+        }
+
+        /* --- Currency Change Animations (Previous) --- */
+        .flag-animate {
+            animation: flagSwap 0.4s ease-in-out;
+        }
+        @keyframes flagSwap {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(0.8) translateY(-5px); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .result-fade-out {
+            animation: fadeOut 0.2s ease-out forwards;
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+
+        /* --- Input & Error Animations --- */
+        /* Input Focus Glow (General transition) */
+        .input-glow:focus {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); 
+        }
+        .input-glow {
+            transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
+        
+        /* Input Pulse Animation on Convert Click */
+        .input-pulse {
+            animation: inputPulse 0.7s ease-in-out forwards;
+        }
+        @keyframes inputPulse {
+            0% { border-color: rgb(75, 85, 99); } /* gray-600 */
+            50% { border-color: rgb(59, 130, 246); box-shadow: 0 0 5px rgba(59, 130, 246, 0.8); } /* blue-500 */
+            100% { border-color: rgb(75, 85, 99); box-shadow: none; }
+        }
+
+        /* Error Shake Animation */
+        .shake-error {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* --- Result & Icon Animations --- */
+        /* Result Pop Animation for output */
+        .result-pop {
+            animation: resultPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.27) forwards;
+        }
+        @keyframes resultPop {
+            0% { transform: scale(0.8); opacity: 0.1; }
+            50% { transform: scale(1.05); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Swap Icon Rotation */
+        .is-swapping {
+            animation: swapRotate 0.5s ease-in-out;
+        }
+        @keyframes swapRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Loading Spinner Rotation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinner-icon {
+            animation: spin 1s linear infinite;
+        }
+        /* Copy Confirmation Animation */
+        .animate-fade-in-out {
+            animation: fadeInOut 1.5s ease-in-out forwards;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* --- MODAL (POP-UP) SPECIFIC STYLES --- */
+        /* Improved animation for a more satisfying pop */
+        .modal-enter {
+            animation: modalEnter 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes modalEnter {
+            from { opacity: 0; transform: scale(0.7) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-exit {
+            animation: modalExit 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+        }
+        @keyframes modalExit {
+            from { opacity: 1; transform: scale(1) translateY(0); }
+            to { opacity: 0; transform: scale(0.95) translateY(20px); }
+        }
+
+        /* Custom text style for author names */
+        .author-name-text {
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); /* Green-Blue gradient */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex justify-center items-center min-h-screen p-4 dark-mode relative">
+
+    <!-- About Author Modal (Hidden by Default) -->
+    <div id="author-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div id="author-modal-backdrop" class="absolute inset-0 bg-black bg-opacity-70 backdrop-blur-sm transition-opacity duration-300"></div>
+        
+        <!-- Modal Content (Improved Style) -->
+        <div id="author-modal-content" 
+             class="bg-gray-800 rounded-xl p-8 shadow-2xl z-10 w-full max-w-xs text-center border border-emerald-500/50">
+            <h3 class="text-3xl font-extrabold text-emerald-400 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="inline w-6 h-6 mr-2 mb-1 text-blue-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 20.73V22h-4v-1.27a1 1 0 0 1-.68-.87C7.82 19.35 6 16.85 6 14v-2c0-3.31 2.69-6 6-6s6 2.69 6 6v2c0 2.85-1.82 5.35-3.32 5.86a1 1 0 0 1-.68.87z"/><path d="M9 11v1c0 1.66 1.34 3 3 3s3-1.34 3-3v-1"/></svg>
+                Creators
+            </h3>
+            <p class="text-gray-400 mb-6 font-medium">Built with passion and a focus on clean design:</p>
+            
+            <div class="space-y-4">
+                <div class="p-3 bg-gray-700 rounded-xl shadow-inner shadow-gray-900/50 border border-gray-700">
+                    <p class="text-2xl author-name-text">Shah</p>
+                    <p class="text-sm text-gray-500 mt-1">Design & Frontend Engineering</p>
+                </div>
+                <div class="p-3 bg-gray-700 rounded-xl shadow-inner shadow-gray-900/50 border border-gray-700">
+                    <p class="text-2xl author-name-text">Adi</p>
+                    <p class="text-sm text-gray-500 mt-1">Logic & User Experience</p>
+                </div>
+            </div>
+            
+            <button id="close-modal-button" 
+                    class="mt-6 w-full py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 active:scale-95 shadow-md">
+                Got it!
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Controls on the top right -->
+    <div class="absolute top-4 right-4 flex flex-col items-end space-y-2 z-20">
+        <!-- About Author Button -->
+        <button id="about-author-toggle" 
+                class="p-2 rounded-lg text-xs font-semibold transition-colors duration-300 text-gray-300 hover:text-emerald-400 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            About Authors
+        </button>
+
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle" 
+                class="p-2 rounded-full transition-colors duration-300 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            🌙
+        </button>
+    </div>
+
+
+    <!-- Greeting Interface (Initial View) -->
+    <div id="greeting-screen" 
+         class="converter-container p-8 rounded-xl shadow-2xl w-full max-w-sm border border-gray-700 slide-in pulse-shadow relative
+                bg-gradient-to-br from-gray-800 to-gray-900 transition-colors duration-300">
+        <h2 id="greeting-text" class="text-3xl font-extrabold text-emerald-400 mb-4 animate-pulse"></h2>
+        <p class="text-gray-300 mb-6">Your minimal currency converter is ready to launch.</p>
+        <button id="launch-button" 
+                class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 active:scale-95 shadow-md">
+            Open Calculator
+        </button>
+    </div>
+
+    <!-- Currency Converter Interface (Hidden Initially) -->
+    <div id="converter-screen" 
+         class="converter-container p-6 rounded-xl shadow-2xl w-full max-w-sm border border-gray-700 hidden-initial pulse-shadow relative
+                bg-gradient-to-br from-gray-800 to-gray-900 transition-colors duration-300">
+        <h1 class="text-white text-xl font-bold mb-6">Currency Calculator</h1>
+
+        <div class="input-group mb-5">
+            <label for="amount-input" class="block text-sm font-medium text-gray-400 text-left mb-1">Amount to Convert</label>
+            <input type="number" id="amount-input" value="1.00" min="0.01" 
+                   class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white text-lg focus:ring-transparent input-glow transition duration-150">
+        </div>
+
+        <div class="currency-selectors flex justify-between items-center gap-3 mb-6">
+            
+            <!-- From Currency Selector -->
+            <div class="select-group flex items-center gap-2 flex-1">
+                <!-- Flag Icon Container (Updated by JS) -->
+                <span id="from-flag" class="fi fi-us"></span>
+                <div class="flex-1">
+                    <label for="from-currency-select" class="block text-xs font-semibold text-gray-400 text-left">From</label>
+                    <select id="from-currency-select" 
+                            class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-transparent input-glow transition duration-150"></select>
+                </div>
+            </div>
+
+            <!-- Swap Icon -->
+            <button id="swap-icon" class="text-gray-400 hover:text-blue-400 transition duration-200 p-2 rounded-full transform">
+                🔄
+            </button>
+
+            <!-- To Currency Selector -->
+            <div class="select-group flex items-center gap-2 flex-1">
+                <!-- Flag Icon Container (Updated by JS) -->
+                <span id="to-flag" class="fi fi-eu"></span>
+                <div class="flex-1">
+                    <label for="to-currency-select" class="block text-xs font-semibold text-gray-400 text-left">To</label>
+                    <select id="to-currency-select" 
+                            class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-transparent input-glow transition duration-150"></select>
+                </div>
+            </div>
+        </div>
+
+        <button id="convert-button" 
+                class="w-full py-2.5 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 active:scale-98
+                       text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 flex items-center justify-center">
+            <span id="convert-text">Convert</span>
+            <svg id="loading-spinner" class="spinner-icon w-5 h-5 ml-2 hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor">
+                <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 11.4477 21.5523 11 21 11C20.4477 11 20 11.4477 20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12C4 7.58172 7.58172 4 12 4C13.848 4 15.548 4.60411 16.9205 5.63209C17.3879 5.98638 18.0469 5.90804 18.3971 5.44391C18.7473 4.97978 18.6706 4.32049 18.2033 3.96621C16.5884 2.76867 14.3862 2 12 2Z" fill="currentColor" opacity="0.6"></path>
+            </svg>
+        </button>
+
+        <!-- Result and Copy Button -->
+        <div class="mt-6 flex flex-col items-center justify-center">
+            <div id="error-message" class="text-red-400 text-sm mb-2 hidden opacity-0"></div>
+
+            <div class="flex items-center gap-2">
+                <div id="result-text" class="text-white text-lg font-bold min-h-6"></div>
+                <button id="copy-button" 
+                        class="p-1 rounded-full text-gray-500 hover:text-emerald-400 transition duration-150 focus:outline-none"
+                        title="Copy Result">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+            </div>
+            <p id="copy-confirmation" class="text-xs text-emerald-400 mt-1 hidden opacity-0">Copied!</p>
+        </div>
+    </div>
+
+    <!-- Embedded JavaScript logic -->
+    <script>
+        // --- STATIC EXCHANGE RATE DATA (USD as base) ---
+        const exchangeRates = {
+            "USD": { rate: 1, name: "US Dollar", country: "us" },
+            "EUR": { rate: 0.93, name: "Euro", country: "eu" },
+            "GBP": { rate: 0.82, name: "British Pound", country: "gb" },
+            "JPY": { rate: 151.70, name: "Japanese Yen", country: "jp" },
+            "CAD": { rate: 1.37, name: "Canadian Dollar", country: "ca" },
+            "AUD": { rate: 1.54, name: "Australian Dollar", country: "au" },
+            "CHF": { rate: 0.90, name: "Swiss Franc", country: "ch" },
+            "INR": { rate: 83.50, name: "Indian Rupee", country: "in" },
+            "BRL": { rate: 5.17, name: "Brazilian Real", country: "br" },
+        };
+        // ------------------------------------------------
+
+        // --- DOM ELEMENTS ---
+        const amountInput = document.getElementById('amount-input');
+        const fromCurrencySelect = document.getElementById('from-currency-select');
+        const toCurrencySelect = document.getElementById('to-currency-select');
+        const convertButton = document.getElementById('convert-button');
+        const convertText = document.getElementById('convert-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const resultText = document.getElementById('result-text');
+        const swapIcon = document.getElementById('swap-icon');
+        const fromFlag = document.getElementById('from-flag');
+        const toFlag = document.getElementById('to-flag');
+        const themeToggle = document.getElementById('theme-toggle');
+        const aboutAuthorToggle = document.getElementById('about-author-toggle');
+        const copyButton = document.getElementById('copy-button');
+        const copyConfirmation = document.getElementById('copy-confirmation');
+        const greetingScreen = document.getElementById('greeting-screen');
+        const converterScreen = document.getElementById('converter-screen');
+        const launchButton = document.getElementById('launch-button');
+        const greetingText = document.getElementById('greeting-text');
+        const errorMessage = document.getElementById('error-message'); 
+        
+        // Modal Elements
+        const authorModal = document.getElementById('author-modal');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const authorModalContent = document.getElementById('author-modal-content');
+
+        const DEFAULT_FROM_CURRENCY = 'USD';
+        const DEFAULT_TO_CURRENCY = 'EUR';
+
+        /**
+         * Determines the appropriate greeting based on the current time.
+         */
+        function getGreeting() {
+            const hour = new Date().getHours();
+            if (hour >= 5 && hour < 12) {
+                return "Good Morning! ☀️";
+            } else if (hour >= 12 && hour < 17) {
+                return "Good Day! 👋";
+            } else {
+                return "Good Evening! 🌙";
+            }
+        }
+
+        /**
+         * Clears the result text with a fade-out effect.
+         */
+        function clearResult() {
+            if (resultText.textContent.trim() !== '') {
+                resultText.classList.add('result-fade-out');
+                setTimeout(() => {
+                    resultText.innerHTML = '';
+                    resultText.classList.remove('result-fade-out');
+                }, 200); // Matches the fadeOut animation duration
+            }
+        }
+        
+        /**
+         * Updates the flag icon next to the dropdown based on the selected value, with animation.
+         */
+        function updateFlag(selectElement, flagElement) {
+            const code = selectElement.value;
+            const countryCode = exchangeRates[code].country;
+            
+            // 1. Add animation class
+            flagElement.classList.add('flag-animate');
+
+            // 2. Wait half the animation time (50% keyframe) to swap the underlying image/class
+            setTimeout(() => {
+                // Remove all existing 'fi-' classes
+                flagElement.className = flagElement.className.split(' ').filter(c => !c.startsWith('fi-')).join(' ');
+                // Add the new flag class
+                flagElement.classList.add(`fi-${countryCode}`);
+                
+                // 3. Remove animation class after the animation cycle completes
+                setTimeout(() => {
+                     flagElement.classList.remove('flag-animate');
+                }, 200); // Remaining 50% of 400ms animation
+                
+            }, 200); // 50% of 400ms animation duration
+        }
+
+        /**
+         * Populates the dropdowns.
+         */
+        function populateCurrencySelects() {
+            const fragment = document.createDocumentFragment();
+            const currencyCodes = Object.keys(exchangeRates).sort();
+
+            currencyCodes.forEach(code => {
+                const data = exchangeRates[code];
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = `${code} - ${data.name}`; 
+                fragment.appendChild(option);
+            });
+
+            fromCurrencySelect.innerHTML = '';
+            toCurrencySelect.innerHTML = '';
+            fromCurrencySelect.appendChild(fragment.cloneNode(true));
+            toCurrencySelect.appendChild(fragment.cloneNode(true));
+
+            // Set default values
+            fromCurrencySelect.value = DEFAULT_FROM_CURRENCY;
+            toCurrencySelect.value = DEFAULT_TO_CURRENCY;
+            
+            // Initialize flags without animation on load
+            updateFlagImmediate(fromCurrencySelect, fromFlag);
+            updateFlagImmediate(toCurrencySelect, toFlag);
+        }
+        
+        /** Helper function for initial flag setting without animation. */
+        function updateFlagImmediate(selectElement, flagElement) {
+            const code = selectElement.value;
+            const countryCode = exchangeRates[code].country;
+            flagElement.className = flagElement.className.split(' ').filter(c => !c.startsWith('fi-')).join(' ');
+            flagElement.classList.add(`fi-${countryCode}`);
+        }
+
+
+        /**
+         * Performs the currency conversion using static rates with a simulated delay.
+         */
+        function convertCurrency() {
+            const amount = parseFloat(amountInput.value);
+            const fromCode = fromCurrencySelect.value;
+            const toCode = toCurrencySelect.value;
+
+            // 1. Trigger Input Pulse Animation
+            amountInput.classList.remove('input-pulse');
+            void amountInput.offsetWidth; // Force reflow
+            amountInput.classList.add('input-pulse');
+
+
+            // 2. Validation and Error Handling
+            if (isNaN(amount) || amount <= 0) {
+                // Show error message with shake animation
+                errorMessage.textContent = 'Please enter a valid amount (> 0.00).';
+                errorMessage.classList.remove('hidden', 'opacity-0');
+                errorMessage.classList.add('shake-error');
+                resultText.innerHTML = '';
+                
+                setTimeout(() => {
+                    errorMessage.classList.remove('shake-error');
+                    errorMessage.classList.add('opacity-0');
+                    setTimeout(() => { errorMessage.classList.add('hidden'); }, 500);
+                }, 1500); 
+                return;
+            }
+            
+            // Hide error if input is valid
+            errorMessage.classList.add('hidden');
+            errorMessage.classList.remove('shake-error');
+            
+            // 3. Start Loading State
+            convertButton.disabled = true;
+            convertButton.classList.remove('bg-gradient-to-r', 'from-emerald-500', 'to-green-500', 'hover:from-emerald-600', 'hover:to-green-600');
+            convertButton.classList.add('bg-gray-600');
+            convertText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                try {
+                    const rateFrom = exchangeRates[fromCode].rate;
+                    const rateTo = exchangeRates[toCode].rate;
+                    const crossRate = rateTo / rateFrom; 
+                    const convertedAmount = amount * crossRate;
+
+                    const formattedResult = convertedAmount.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 4 
+                    });
+                    
+                    const formattedRate = crossRate.toFixed(4);
+
+                    // 4. Update Result (Success)
+                    resultText.innerHTML = `
+                        ${amount.toFixed(2)} ${fromCode} = 
+                        <span class="text-emerald-400">${formattedResult}</span> ${toCode}
+                        <p class="text-sm font-normal text-gray-500 mt-1">1 ${fromCode} = ${formattedRate} ${toCode}</p>
+                    `;
+
+                    // Trigger the result-pop animation
+                    resultText.classList.remove('result-pop');
+                    void resultText.offsetWidth; // Force reflow
+                    resultText.classList.add('result-pop');
+                    
+                } catch (error) {
+                    resultText.innerHTML = '<span class="text-red-400">Error: Conversion failed.</span>';
+                    console.error('Conversion Error:', error);
+                } finally {
+                    // 5. End Loading State
+                    convertButton.disabled = false;
+                    convertButton.classList.add('bg-gradient-to-r', 'from-emerald-500', 'to-green-500', 'hover:from-emerald-600', 'hover:to-green-600');
+                    convertButton.classList.remove('bg-gray-600');
+                    convertText.classList.remove('hidden');
+                    loadingSpinner.classList.add('hidden');
+                }
+            }, 700); // 700ms simulated delay for the loading animation to be visible
+        }
+
+        /**
+         * Swaps the selected "From" and "To" currencies and their flags.
+         */
+        function swapCurrencies() {
+            clearResult();
+
+            // Prepare flags for animation before swap
+            fromFlag.classList.add('flag-animate');
+            toFlag.classList.add('flag-animate');
+            
+            // Add rotation animation to the swap icon
+            swapIcon.classList.add('is-swapping');
+            
+            setTimeout(() => {
+                const tempValue = fromCurrencySelect.value;
+                fromCurrencySelect.value = toCurrencySelect.value;
+                toCurrencySelect.value = tempValue;
+
+                // Update flags immediately during the animation midpoint
+                updateFlagImmediate(fromCurrencySelect, fromFlag);
+                updateFlagImmediate(toCurrencySelect, toFlag);
+
+                // Remove animation classes after the visual part is done
+                setTimeout(() => {
+                    fromFlag.classList.remove('flag-animate');
+                    toFlag.classList.remove('flag-animate');
+                    swapIcon.classList.remove('is-swapping');
+                }, 200); // Remaining 50% of flag animation
+                
+                convertCurrency(); 
+            }, 250); // Midpoint of swap rotation
+        }
+        
+        /**
+         * Copies the main conversion result to the clipboard.
+         */
+        function copyResult() {
+            const resultContent = resultText.textContent;
+            
+            if (!resultContent || resultContent.includes('valid amount') || resultContent.includes('Conversion failed')) {
+                 copyConfirmation.textContent = 'Nothing to copy';
+            }
+            
+            // Clean up the text: remove the rate line and leading spaces
+            const cleanText = resultContent.split('\n')[0].trim();
+        
+            try {
+                // Use document.execCommand('copy') for better iframe compatibility
+                const tempInput = document.createElement("textarea");
+                tempInput.value = cleanText;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                
+                // Show confirmation message
+                copyConfirmation.textContent = 'Copied!';
+                copyConfirmation.classList.remove('hidden');
+                copyConfirmation.classList.remove('opacity-0');
+                copyConfirmation.classList.add('animate-fade-in-out');
+                
+                setTimeout(() => {
+                    // Remove animation class after confirmation
+                    copyConfirmation.classList.add('opacity-0');
+                    copyConfirmation.classList.remove('animate-fade-in-out');
+                    setTimeout(() => {
+                        copyConfirmation.classList.add('hidden');
+                    }, 500); // Wait for opacity transition
+                }, 1000); 
+        
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+                copyConfirmation.textContent = 'Copy failed!';
+            }
+        }
+        
+        /**
+         * Toggles between Dark and Light Mode.
+         */
+        function toggleTheme() {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const targetMode = isDarkMode ? 'light' : 'dark';
+            
+            // Define elements to toggle
+            const elementsToToggle = [
+                { el: document.body, dark: 'bg-gray-900', light: 'bg-gray-100', isBody: true },
+                
+                // Container Backgrounds (with gradients)
+                { el: greetingScreen, dark: 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700', light: 'bg-white border-gray-200' },
+                { el: converterScreen, dark: 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700', light: 'bg-white border-gray-200' },
+                
+                // Modal Backgrounds
+                { el: authorModalContent, dark: 'bg-gray-800 border-emerald-500/50', light: 'bg-white border-gray-300' },
+                { el: document.querySelectorAll('#author-modal-content .bg-gray-700'), dark: 'bg-gray-700', light: 'bg-gray-100', isList: true },
+                
+                // Text/Label elements
+                { el: document.querySelector('#greeting-screen h2'), dark: 'text-emerald-400', light: 'text-emerald-600' },
+                { el: document.querySelector('#converter-screen h1'), dark: 'text-white', light: 'text-gray-900' },
+                { el: document.querySelectorAll('.text-gray-300'), dark: 'text-gray-300', light: 'text-gray-700', isList: true },
+                { el: document.querySelectorAll('.text-gray-400'), dark: 'text-gray-400', light: 'text-gray-600', isList: true },
+                { el: document.querySelectorAll('.text-gray-500'), dark: 'text-gray-500', light: 'text-gray-400', isList: true },
+                { el: resultText, dark: 'text-white', light: 'text-gray-900' },
+                
+                // Input/Select fields
+                { el: amountInput, dark: 'bg-gray-700 border-gray-600 text-white', light: 'bg-gray-100 border-gray-300 text-gray-900' },
+                { el: fromCurrencySelect, dark: 'bg-gray-700 border-gray-600 text-white', light: 'bg-gray-100 border-gray-300 text-gray-900' },
+                { el: toCurrencySelect, dark: 'bg-gray-700 border-gray-600 text-white', light: 'bg-gray-100 border-gray-300 text-gray-900' },
+            ];
+
+            // Utility function to handle class toggling
+            const toggleClasses = (el, darkClasses, lightClasses) => {
+                if (!el) return;
+                const toRemove = targetMode === 'dark' ? lightClasses : darkClasses;
+                const toAdd = targetMode === 'dark' ? darkClasses : lightClasses;
+                
+                el.classList.remove(...toRemove.split(' ').filter(c => c));
+                el.classList.add(...toAdd.split(' ').filter(c => c));
+            };
+
+            // Apply toggling logic
+            elementsToToggle.forEach(item => {
+                // Handle single element or list of elements
+                const elements = item.isList ? Array.from(item.el) : (item.el ? [item.el] : []); 
+                
+                elements.forEach(el => {
+                    if (el && item.dark && item.light) {
+                        toggleClasses(el, item.dark, item.light);
+                    }
+                });
+            });
+
+            // Specific element handling (icons, buttons)
+            toggleClasses(themeToggle, 'text-gray-400 hover:text-white', 'text-gray-600 hover:text-gray-900');
+            toggleClasses(aboutAuthorToggle, 'text-gray-300 hover:text-emerald-400 bg-gray-700 hover:bg-gray-600', 'text-gray-600 hover:text-emerald-600 bg-gray-200 hover:bg-gray-300');
+            toggleClasses(swapIcon, 'text-gray-400 hover:text-blue-400', 'text-gray-600 hover:text-blue-600');
+            
+            document.body.classList.toggle('dark-mode', targetMode === 'dark');
+            themeToggle.innerHTML = targetMode === 'dark' ? '🌙' : '☀️';
+        }
+
+        /**
+         * Opens the "About the Authors" modal with a pop-up animation.
+         */
+        function openAuthorModal() {
+            authorModal.classList.remove('hidden');
+            // Ensure animation restarts if modal was previously closed quickly
+            authorModalContent.classList.remove('modal-enter', 'modal-exit');
+            void authorModalContent.offsetWidth; // Force reflow
+            authorModalContent.classList.add('modal-enter');
+            // Disable body scrolling while modal is open
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        /**
+         * Closes the "About the Authors" modal with a fade-out animation.
+         */
+        function closeAuthorModal() {
+            authorModalContent.classList.remove('modal-enter');
+            authorModalContent.classList.add('modal-exit');
+            
+            setTimeout(() => {
+                authorModal.classList.add('hidden');
+                authorModalContent.classList.remove('modal-exit');
+                // Re-enable body scrolling
+                document.body.style.overflow = ''; 
+            }, 300); // Matches the modal-exit animation duration
+        }
+
+        /**
+         * Handles the transition from the greeting screen to the converter.
+         */
+        function launchConverter() {
+            // 1. Hide the greeting screen with a fade-out effect (using the name slide-in's reverse style)
+            greetingScreen.classList.remove('slide-in');
+            greetingScreen.classList.add('fade-out');
+            
+            // 2. Wait for the fade-out to finish
+            setTimeout(() => {
+                greetingScreen.style.display = 'none';
+
+                // 3. Prepare and show the converter screen with a slide-in effect
+                converterScreen.style.display = 'block';
+                converterScreen.classList.remove('hidden-initial');
+                converterScreen.classList.add('slide-in'); 
+                
+                // 4. Initialize calculator functionality
+                populateCurrencySelects();
+                convertCurrency();
+                
+                // 5. UX improvement: focus the amount input
+                amountInput.focus();
+            }, 500); // Matches the 0.5s fade-out animation duration
+        }
+
+        // --- EVENT LISTENERS (ENTRY POINT) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial theme to dark mode (by default)
+            document.body.classList.add('dark-mode');
+            
+            // Set initial greeting text
+            greetingText.textContent = getGreeting();
+            
+            // Initialize event listeners
+            launchButton.addEventListener('click', launchConverter);
+            convertButton.addEventListener('click', convertCurrency);
+            
+            themeToggle.addEventListener('click', toggleTheme);
+            aboutAuthorToggle.addEventListener('click', openAuthorModal); 
+            closeModalButton.addEventListener('click', closeAuthorModal); 
+            
+            // Close modal when clicking outside the content (on the backdrop)
+            document.getElementById('author-modal-backdrop').addEventListener('click', closeAuthorModal);
+
+            copyButton.addEventListener('click', copyResult);
+            
+            // Allow converting on 'Enter' key press in the amount input
+            amountInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    convertCurrency();
+                }
+            });
+
+            // Update flags and trigger conversion on selection change
+            fromCurrencySelect.addEventListener('change', () => {
+                clearResult(); // Clear result immediately for better UX
+                updateFlag(fromCurrencySelect, fromFlag);
+                convertCurrency();
+            });
+            toCurrencySelect.addEventListener('change', () => {
+                clearResult(); // Clear result immediately for better UX
+                updateFlag(toCurrencySelect, toFlag);
+                convertCurrency();
+            });
+            
+            swapIcon.addEventListener('click', swapCurrencies);
+        });
+
+    </script>
+</body>
+</html>
